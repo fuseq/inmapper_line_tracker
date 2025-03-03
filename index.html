@@ -21,9 +21,8 @@
     <div id="map"></div>
 
     <script>
-        let map = L.map('map').setView([37.426217,31.851766], 15); // İstanbul başlangıç noktası
+        let map = L.map('map').setView([37.426217,31.851766], 15); 
 
-        // OpenStreetMap (OSM) haritasını ekleyelim
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap Katkıda Bulunanlar'
         }).addTo(map);
@@ -33,16 +32,25 @@
             .bindPopup("Sizin Konumunuz")
             .openPopup();
 
-        // Örnek rota koordinatları (Polyline için)
-        let routeCoordinates = [
-            [37.426217,31.851766], // Örnek koordinatlar (İstanbul)
+        // Örnek rotalar (Polyline'lar için)
+        let routeCoordinates1 = [
+            [37.426217,31.851766], 
             [37.426034,31.851874],
             [37.425868,31.851976],
             [37.425693,31.852078]
         ];
 
-        // Rotayı çizen polyline
-        let routePolyline = L.polyline(routeCoordinates, { color: 'red' }).addTo(map);
+        let routeCoordinates2 = [
+            [37.426217,31.851766], 
+            [37.426379,31.852341],
+            [37.426481,31.852733],
+            
+            
+        ];
+
+        // Rotaları çizen polyline'lar
+        let routePolyline1 = L.polyline(routeCoordinates1, { color: 'red' }).addTo(map);
+        let routePolyline2 = L.polyline(routeCoordinates2, { color: 'blue' }).addTo(map);
 
         // Kullanıcının konumunu sürekli güncelle
         function updateUserLocation(position) {
@@ -52,13 +60,33 @@
             userMarker.setLatLng(userLatLng);
 
             // Kullanıcıyı en yakın rota noktasına yaklaştır
-            let nearestPoint = findNearestPoint(userLatLng, routeCoordinates);
+            let nearestRoute = findNearestRoute(userLatLng, [routeCoordinates1, routeCoordinates2]);
             
-            // Marker'ı en yakın noktaya taşıma (opsiyonel)
-            userMarker.setLatLng(nearestPoint);
+            // Marker'ı en yakın rota noktasına taşı
+            userMarker.setLatLng(nearestRoute.nearestPoint);
 
-            // Haritayı merkeze al (opsiyonel)
-            map.setView(nearestPoint, 15);
+            // Haritayı merkeze al 
+            map.setView(nearestRoute.nearestPoint, 15);
+        }
+
+        // En yakın rota noktasını bulan fonksiyon
+        function findNearestRoute(userLocation, routes) {
+            let minDistance = Number.MAX_VALUE;
+            let nearestRoute = null;
+            let nearestPoint = null;
+
+            routes.forEach(route => {
+                let nearestPointOnRoute = findNearestPoint(userLocation, route);
+                let distance = getDistance(userLocation, nearestPointOnRoute);
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestRoute = route;
+                    nearestPoint = nearestPointOnRoute;
+                }
+            });
+
+            return { nearestRoute, nearestPoint };
         }
 
         // En yakın rota noktasını bulan fonksiyon
