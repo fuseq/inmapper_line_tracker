@@ -77,37 +77,21 @@
             let nearestRoute = null;
             let nearestPoint = null;
 
+            // Her rotayı kontrol et
             routes.forEach(route => {
-                // Route içindeki en yakın noktayı bul
-                let nearestPointOnRoute = getNearestPointOnRoute(userLocation, route);
-                let distance = getDistance(userLocation, nearestPointOnRoute);
+                // Rotadaki her nokta için mesafeyi kontrol et
+                route.forEach(routePoint => {
+                    let distance = getDistance(userLocation, routePoint);
 
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    nearestRoute = route;
-                    nearestPoint = nearestPointOnRoute;
-                }
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearestRoute = route;
+                        nearestPoint = routePoint;
+                    }
+                });
             });
 
             return { nearestRoute, nearestPoint };
-        }
-
-        // Bir rotadaki en yakın noktayı bulan fonksiyon
-        function getNearestPointOnRoute(userLocation, route) {
-            let minDistance = Number.MAX_VALUE;
-            let nearestPoint = route[0];
-
-            for (let i = 0; i < route.length; i++) {
-                let routePoint = route[i];
-                let distance = getDistance(userLocation, routePoint);
-
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    nearestPoint = routePoint;
-                }
-            }
-
-            return nearestPoint;
         }
 
         // İki nokta arasındaki mesafeyi hesaplayan basit fonksiyon
@@ -116,6 +100,7 @@
             let lngDiff = point1[1] - point2[1];
             return Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
         }
+
         // Kullanıcının konumunu sürekli izleme
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(updateUserLocation, function (error) {
