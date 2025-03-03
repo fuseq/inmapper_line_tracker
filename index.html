@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leaflet.js ile Yol Takibi</title>
-    
+
     <!-- Leaflet CSS ve JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -16,36 +17,37 @@
         }
     </style>
 </head>
+
 <body>
 
     <div id="map"></div>
 
     <script>
-        let map = L.map('map').setView([37.426217,31.851766], 15); 
+        let map = L.map('map').setView([37.426217, 31.851766], 15);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap Katkıda Bulunanlar'
         }).addTo(map);
 
         // Kullanıcının konumunu gösteren marker
-        let userMarker = L.marker([37.426217,31.851766]).addTo(map)
+        let userMarker = L.marker([37.426217, 31.851766]).addTo(map)
             .bindPopup("Sizin Konumunuz")
             .openPopup();
 
         // Örnek rotalar (Polyline'lar için)
         let routeCoordinates1 = [
-            [37.426217,31.851766], 
-            [37.426034,31.851874],
-            [37.425868,31.851976],
-            [37.425693,31.852078]
+            [37.426217, 31.851766],
+            [37.426034, 31.851874],
+            [37.425868, 31.851976],
+            [37.425693, 31.852078]
         ];
 
         let routeCoordinates2 = [
-            [37.426217,31.851766], 
-            [37.426379,31.852341],
-            [37.426481,31.852733],
-            
-            
+            [37.426217, 31.851766],
+            [37.426379, 31.852341],
+            [37.426481, 31.852733],
+
+
         ];
 
         // Rotaları çizen polyline'lar
@@ -61,7 +63,7 @@
 
             // Kullanıcıyı en yakın rota noktasına yaklaştır
             let nearestRoute = findNearestRoute(userLatLng, [routeCoordinates1, routeCoordinates2]);
-            
+
             // Marker'ı en yakın rota noktasına taşı
             userMarker.setLatLng(nearestRoute.nearestPoint);
 
@@ -76,9 +78,10 @@
             let nearestPoint = null;
 
             routes.forEach(route => {
-                let nearestPointOnRoute = findNearestPoint(userLocation, route);
+                // Route içindeki en yakın noktayı bul
+                let nearestPointOnRoute = getNearestPointOnRoute(userLocation, route);
                 let distance = getDistance(userLocation, nearestPointOnRoute);
-                
+
                 if (distance < minDistance) {
                     minDistance = distance;
                     nearestRoute = route;
@@ -89,8 +92,8 @@
             return { nearestRoute, nearestPoint };
         }
 
-        // En yakın rota noktasını bulan fonksiyon
-        function findNearestPoint(userLocation, route) {
+        // Bir rotadaki en yakın noktayı bulan fonksiyon
+        function getNearestPointOnRoute(userLocation, route) {
             let minDistance = Number.MAX_VALUE;
             let nearestPoint = route[0];
 
@@ -113,10 +116,9 @@
             let lngDiff = point1[1] - point2[1];
             return Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
         }
-
         // Kullanıcının konumunu sürekli izleme
         if (navigator.geolocation) {
-            navigator.geolocation.watchPosition(updateUserLocation, function(error) {
+            navigator.geolocation.watchPosition(updateUserLocation, function (error) {
                 console.warn("Konum alınamadı:", error.message);
             }, { enableHighAccuracy: true });
         } else {
@@ -125,4 +127,5 @@
     </script>
 
 </body>
+
 </html>
