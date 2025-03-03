@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet.js ile Yol Takibi</title>
+    
+    <!-- Leaflet CSS ve JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <style>
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <script>
+        let map = L.map('map').setView([37.426217,31.851766], 15); // İstanbul başlangıç noktası
+
+        // OpenStreetMap (OSM) haritasını ekleyelim
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap Katkıda Bulunanlar'
+        }).addTo(map);
+
+        // Kullanıcının konumunu gösteren marker
+        let userMarker = L.marker([37.426217,31.851766]).addTo(map)
+            .bindPopup("Sizin Konumunuz")
+            .openPopup();
+
+        // Örnek rota koordinatları (Polyline için)
+        let routeCoordinates = [
+            [37.426217,31.851766], // Örnek koordinatlar (İstanbul)
+            [37.426034,31.851874],
+            [37.425868,31.851976],
+            [37.425693,31.852078]
+        ];
+
+        // Rotayı çizen polyline
+        let routePolyline = L.polyline(routeCoordinates, { color: 'red' }).addTo(map);
+
+        // Kullanıcının konumunu sürekli güncelle
+        function updateUserLocation(position) {
+            let userLatLng = [position.coords.latitude, position.coords.longitude];
+
+            // Marker'ı yeni konuma taşı
+            userMarker.setLatLng(userLatLng);
+
+            // Kullanıcıyı en yakın rota noktasına yaklaştır
+            let nearestPoint = findNearestPoint(userLatLng, routeCoordinates);
+            
+            // Marker'ı en yakın noktaya taşıma (opsiyonel)
+            userMarker.setLatLng(nearestPoint);
+
+            // Haritayı merkeze al (opsiyonel)
+            map.setView(nearestPoint, 15);
+        }
+
+        // En yakın rota noktasını bulan fonksiyon
+        function findNearestPoint(userLocation, route) {
+            let minDistance = Number.MAX_VALUE;
+            let nearestPoint = route[0];
+
+            for (let i = 0; i < route.length; i++) {
+                let routePoint = route[i];
+                let distance = getDistance(userLocation, routePoint);
+
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestPoint = routePoint;
+                }
+            }
+
+            return nearestPoint;
+        }
+
+        // İki nokta arasındaki mesafeyi hesaplayan basit fonksiyon
+        function getDistance(point1, point2) {
+            let latDiff = point1[0] - point2[0];
+            let lngDiff = point1[1] - point2[1];
+            return Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+        }
+
+        // Kullanıcının konumunu sürekli izleme
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(updateUserLocation, function(error) {
+                console.warn("Konum alınamadı:", error.message);
+            }, { enableHighAccuracy: true });
+        } else {
+            alert("Geolocation API desteklenmiyor!");
+        }
+    </script>
+
+</body>
+</html>
