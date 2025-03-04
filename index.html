@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaflet.js ile Yol Takibi</title>
+    <title>Leaflet.js ile Kesintisiz Yol Takibi</title>
 
     <!-- Leaflet CSS ve JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
@@ -29,76 +29,87 @@
             attribution: '© OpenStreetMap Katkıda Bulunanlar'
         }).addTo(map);
 
-        // Kullanıcının konumunu gösteren marker
-        let userMarker = L.marker([37.426217, 31.851766]).addTo(map)
-            .bindPopup("Sizin Konumunuz")
-            .openPopup();
-
-        // Örnek rotalar (Polyline'lar için)
-        let routeCoordinates1 = [
+        // Örnek Polyline (kesintisiz bir rota)
+        let routeCoordinates = [
             [37.426217, 31.851766],
             [37.426034, 31.851874],
             [37.425868, 31.851976],
-            [37.425693, 31.852078]
+            [37.425693, 31.852078],
+            [37.425500, 31.852200],
+            [37.425300, 31.852350],
+            [37.425000, 31.852500]
         ];
 
-        let routeCoordinates2 = [
-            [37.426217, 31.851766],
-            [37.426379, 31.852341],
-            [37.426481, 31.852733],
+        // Polyline rotasını çiz
+        let routePolyline = L.polyline(routeCoordinates, { color: 'blue' }).addTo(map);
 
+        // Kullanıcının konumunu göstermek için bir marker
+        let userMarker = L.marker(routeCoordinates[0]).addTo(map)
+            .bindPopup("Sizin Konumunuz")
+            .openPopup();
 
-        ];
-
-        // Rotaları çizen polyline'lar
-        let routePolyline1 = L.polyline(routeCoordinates1, { color: 'red' }).addTo(map);
-        let routePolyline2 = L.polyline(routeCoordinates2, { color: 'blue' }).addTo(map);
-
-        // Kullanıcının konumunu sürekli güncelle
+        // Kullanıcının polyline üzerinde kesintisiz ilerlemesini sağlayan fonksiyon
         function updateUserLocation(position) {
             let userLatLng = [position.coords.latitude, position.coords.longitude];
 
-            // Marker'ı yeni konuma taşı
-            userMarker.setLatLng(userLatLng);
+            // Kullanıcının polyline üzerindeki en yakın noktasını bul
+            let nearestPoint = findClosestPointOnPolyline(userLatLng, routePolyline);
 
-            // Kullanıcıyı en yakın rota noktasına yaklaştır
-            let nearestRoute = findNearestRoute(userLatLng, [routeCoordinates1, routeCoordinates2]);
+            // Marker'ı en yakın noktaya taşı
+            userMarker.setLatLng(nearestPoint);
 
-            // Marker'ı en yakın rota noktasına taşı
-            userMarker.setLatLng(nearestRoute.nearestPoint);
-
-            // Haritayı merkeze al 
-            map.setView(nearestRoute.nearestPoint, 15);
+            // Haritayı merkeze al
+            map.setView(nearestPoint, 15);
         }
 
-        // En yakın rota noktasını bulan fonksiyon
-        function findNearestRoute(userLocation, routes) {
-            let minDistance = Number.MAX_VALUE;
-            let nearestRoute = null;
-            let nearestPoint = null;
+        // Verilen bir noktanın polyline üzerindeki en yakın noktasını hesaplar
+        function findClosestPointOnPolyline(userLocation, polyline) {
+            let latlngs = polyline.getLatLngs();
+            let minDistance = Infinity;
+            let closestPoint = null;
 
-            // Her rotayı kontrol et
-            routes.forEach(route => {
-                // Rotadaki her nokta için mesafeyi kontrol et
-                route.forEach(routePoint => {
-                    let distance = getDistance(userLocation, routePoint);
+            for (let i = 0; i < latlngs.length - 1; i++) {
+                let segmentStart = [latlngs[i].lat, latlngs[i].lng];
+                let segmentEnd = [latlngs[i + 1].lat, latlngs[i + 1].lng];
 
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        nearestRoute = route;
-                        nearestPoint = routePoint;
-                    }
-                });
-            });
+                let projectedPoint = projectPointOnSegment(userLocation, segmentStart, segmentEnd);
+                let distance = getDistance(userLocation, projectedPoint);
 
-            return { nearestRoute, nearestPoint };
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestPoint = projectedPoint;
+                }
+            }
+
+            return closestPoint;
         }
 
-        // İki nokta arasındaki mesafeyi hesaplayan basit fonksiyon
+        // İki nokta arasındaki mesafeyi hesaplayan fonksiyon
         function getDistance(point1, point2) {
             let latDiff = point1[0] - point2[0];
             let lngDiff = point1[1] - point2[1];
             return Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+        }
+
+        // Bir noktanın bir çizgi segmenti üzerindeki en yakın noktasını hesaplar
+        function projectPointOnSegment(point, segmentStart, segmentEnd) {
+            let x0 = point[1], y0 = point[0];
+            let x1 = segmentStart[1], y1 = segmentStart[0];
+            let x2 = segmentEnd[1], y2 = segmentEnd[0];
+
+            let dx = x2 - x1;
+            let dy = y2 - y1;
+
+            if (dx === 0 && dy === 0) {
+                return segmentStart;
+            }
+
+            let t = ((x0 - x1) * dx + (y0 - y1) * dy) / (dx * dx + dy * dy);
+
+            if (t < 0) return segmentStart;
+            if (t > 1) return segmentEnd;
+
+            return [y1 + t * dy, x1 + t * dx];
         }
 
         // Kullanıcının konumunu sürekli izleme
