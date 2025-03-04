@@ -1,63 +1,70 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaflet Konum ve Yön Bilgisi</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-locatecontrol/0.76.0/L.Control.Locate.min.css" />
-    <style>
-        #map { height: 400px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leaflet Konum ve Yön Takibi</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-heading@1.0.1/leaflet-heading.min.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+  <style>
+    #map {
+      height: 100vh;
+    }
+  </style>
 </head>
 <body>
-    <h2>Konum ve Yön Bilgisi</h2>
-    <div id="map"></div>
-    <p id="info">Konum ve yön bilgisi alınıyor...</p>
-    
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-locatecontrol/0.76.0/L.Control.Locate.min.js"></script>
-    <script>
-        var map = L.map('map').setView([0, 0], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap Katkıda Bulunanlar'
-        }).addTo(map);
-        
-        var direction = 0; // Başlangıç yönü
-        
-        function updatePosition(lat, lon, heading) {
-            map.setView([lat, lon]);
-            document.getElementById("info").innerText = `Konum: ${lat.toFixed(5)}, ${lon.toFixed(5)} | Yön: ${heading.toFixed(2)}°`;
-        }
-        
-        L.control.locate({
-            setView: 'always',
-            drawCircle: true,
-            drawMarker: false,  // Marker'ı çizme
-            keepCurrentZoomLevel: true,
-            showCompass: true,
-            compassHeading: true,
-            strings: {
-                title: "Mevcut Konumu Bul"
-            }
-        }).addTo(map);
-        
-        if (navigator.geolocation) {
-            navigator.geolocation.watchPosition(position => {
-                var lat = position.coords.latitude;
-                var lon = position.coords.longitude;
-                updatePosition(lat, lon, direction);
-            });
-        }
-        
-        if (window.DeviceOrientationEvent) {
-            window.addEventListener("deviceorientationabsolute", event => {
-                if (event.alpha !== null) {
-                    direction = event.alpha;
-                }
-            }, true);
-        }
-    </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-rotatedmarker/0.2.0/leaflet.rotatedMarker.js"></script>
+  <div id="map"></div>
+  
+  <script>
+    // Harita oluşturuluyor
+    var map = L.map('map').setView([37.7749, -122.4194], 13); // Başlangıç konumu
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // Konum takibi için kontrol ekliyoruz
+    var userMarker = L.marker([37.7749, -122.4194]).addTo(map); // Kullanıcı marker'ı
+
+    // Kullanıcı rotasını takip et
+    var route = [
+      { lat: 37.426149, lon: 31.851804 }, // Başlangıç
+      { lat: 37.425685, lon: 31.852078 }, // Hedef
+    ];
+
+    var routeControl = L.Routing.control({
+      waypoints: route.map(function(point) {
+        return L.latLng(point.lat, point.lon);
+      }),
+      routeWhileDragging: true
+    }).addTo(map);
+
+    // Kullanıcının konumunu ve yönünü almak için Geolocation API
+    function getUserLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(function(position) {
+          var latitude = position.coords.latitude;
+          var longitude = position.coords.longitude;
+          var heading = position.coords.heading || 0; // Yön bilgisini alıyoruz
+
+          // Konumu harita üzerinde güncelle
+          userMarker.setLatLng([latitude, longitude]);
+
+          // Kullanıcı yönünü harita üzerinde göster
+          map.setBearing(heading); // Eğer leaflet-heading plugin'i kullanıyorsanız, burada yönü gösterebiliriz
+
+          // Yön simgesini harita üzerinde göster
+          userMarker.setRotationAngle(heading); // Yönü ekrana yansıtır
+
+          console.log(`Latitude: ${latitude}, Longitude: ${longitude}, Heading: ${heading}`);
+        });
+      }
+    }
+
+    // Konum ve yön bilgisini al
+    getUserLocation();
+  </script>
 </body>
 </html>
