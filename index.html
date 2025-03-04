@@ -1,108 +1,63 @@
 <!DOCTYPE html>
-<html lang="zh-Hant-TW">
-
+<html lang="tr">
 <head>
-    <meta charset="utf-8" />
-    <title>Leaflet.SimpleLocate - Demo (v1.0.4)</title>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-
-    <!-- <script src="src/leaflet-simple-locate.js"></script> -->
-    <script src="dist/leaflet-simple-locate.min.js"></script>
-    <link rel="stylesheet" href="style/demo.css" />
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet Konum ve Yön Bilgisi</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-locatecontrol/0.76.0/L.Control.Locate.min.css" />
     <style>
-        html {
-            font-size: 16px;
-        }
-
-        body {
-            padding: 0;
-            margin: 0;
-            overflow: hidden;
-            --primary-rgb: 25, 135, 84;
-        }
-
-        #map {
-            height: calc(var(--vh, 1vh) * 100);
-            width: 100vw;
-            /* transform: rotate(var(--leaflet-simple-locate-orientation, 0deg)); */
-        }
+        #map { height: 400px; }
     </style>
 </head>
-
 <body>
+    <h2>Konum ve Yön Bilgisi</h2>
     <div id="map"></div>
-
+    <p id="info">Konum ve yön bilgisi alınıyor...</p>
+    
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-locatecontrol/0.76.0/L.Control.Locate.min.js"></script>
     <script>
-        "use strict";
-
-        function set_viewport() {
-            document.documentElement.style.setProperty("--vh", window.innerHeight * 0.01 + "px");
+        var map = L.map('map').setView([0, 0], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap Katkıda Bulunanlar'
+        }).addTo(map);
+        
+        var direction = 0; // Başlangıç yönü
+        
+        function updatePosition(lat, lon, heading) {
+            map.setView([lat, lon]);
+            document.getElementById("info").innerText = `Konum: ${lat.toFixed(5)}, ${lon.toFixed(5)} | Yön: ${heading.toFixed(2)}°`;
         }
-
-        set_viewport();
-        window.addEventListener("resize", set_viewport);
-
-        const map = new L.Map("map", {
-            center: [25.0487037, 121.5143449],
-            zoom: 13,
-            zoomControl: false,
-        });
-
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-            minZoom: 7,
-            maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
+        
+        L.control.locate({
+            setView: 'always',
+            drawCircle: true,
+            drawMarker: false,  // Marker'ı çizme
+            keepCurrentZoomLevel: true,
+            showCompass: true,
+            compassHeading: true,
+            strings: {
+                title: "Mevcut Konumu Bul"
+            }
         }).addTo(map);
-
-        const control = new L.Control.SimpleLocate({
-            position: "topleft",
-            className: "button-locate",
-            afterClick: (result) => {
-                console.log("afterClick", result);
-                if (!result.geolocation) console.log("Geolocation Error");
-                if (!result.orientation) console.log("Orientation Error");
-            },
-            afterMarkerAdd: () => {
-                console.log("afterMarkerAdded");
-                const elem = document.getElementById("leaflet-simple-locate-icon-spot");
-                if (elem) {
-                    elem.addEventListener("click", (event) => {
-                        const latlng = control.getLatLng();
-                        const latlng_str = `geolocation: [${Math.round(latlng.lat * 100000) / 100000}, ${Math.round(latlng.lng * 100000) / 100000}]`;
-
-                        const accuracy = control.getAccuracy();
-                        const accuracy_str = `accuracy: ${Math.round(accuracy)} meter`;
-
-                        const angle = control.getAngle();
-                        const angle_str = `orientation: ${Math.round(angle)} degree`;
-
-                        L.popup()
-                            .setLatLng(latlng)
-                            .setContent(`<p style="margin: 0.25rem 0 0.25rem 0">${latlng_str}</p><p style="margin: 0.25rem 0 0.25rem 0">${accuracy_str}</p><p style="margin: 0.25rem 0 0.25rem 0">${angle_str}</p>`)
-                            .openOn(map);
-
-                        event.stopPropagation();
-                        event.preventDefault();
-                    });
+        
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(position => {
+                var lat = position.coords.latitude;
+                var lon = position.coords.longitude;
+                updatePosition(lat, lon, direction);
+            });
+        }
+        
+        if (window.DeviceOrientationEvent) {
+            window.addEventListener("deviceorientationabsolute", event => {
+                if (event.alpha !== null) {
+                    direction = event.alpha;
                 }
-            },
-        }).addTo(map);
-
-        // Sayfa yüklendiğinde otomatik olarak konumu al
-        control.locate();
-
-        map.on("locationfound", (event) => console.log(event));
-        map.on("locationerror", (event) => console.log(event));
-        L.DomEvent.on(window, "ondeviceorientationabsolute" in window ? "deviceorientationabsolute" : "deviceorientation", (event) => console.log(event));
-
+            }, true);
+        }
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-rotatedmarker/0.2.0/leaflet.rotatedMarker.js"></script>
 </body>
-
 </html>
