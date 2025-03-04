@@ -10,8 +10,9 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-    <!-- Leaflet.SimpleLocate JS -->
-    <script src="https://github.com/mfhsieh/leaflet-simple-locate/releases/latest/download/leaflet-simple-locate.min.js"></script>
+    <!-- Leaflet.SimpleLocate eklentisi (Doğrudan eklenemediği için alternatif kullanıldı) -->
+    <script src="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.css" />
 
     <style>
         #map {
@@ -46,28 +47,45 @@
         // Polyline rotasını çiz
         let routePolyline = L.polyline(routeCoordinates, { color: 'blue' }).addTo(map);
 
-        // Leaflet.SimpleLocate eklentisini başlat
-        let simpleLocate = L.simpleLocate({
-            follow: true, // Kullanıcı hareket ettikçe harita onu takip etsin
-            setView: true, // Konumu merkeze al
-            showCompass: true // Cihazın yönünü göster
+        // Kullanıcının en yakın noktaya taşınması için marker
+        let userMarker = L.marker(routeCoordinates[0], { draggable: false }).addTo(map)
+            .bindPopup("Sizin Konumunuz");
+
+        // Kullanıcının konumunu sürekli güncelleme ve yönünü gösterme (Locate Control kullanımı)
+        let locateControl = L.control.locate({
+            position: 'topright',
+            drawCircle: true,
+            follow: true,
+            setView: 'untilPan',
+            keepCurrentZoomLevel: true,
+            showCompass: true,
+            markerStyle: { color: 'red', fillColor: '#ff0000', fillOpacity: 0.8 },
+            strings: {
+                title: "Konumumu Bul",
+                popup: "Şu an buradasınız!"
+            }
         }).addTo(map);
 
-        // Kullanıcının en yakın noktasını hesapla ve marker'ı güncelle
-        simpleLocate.on('locationfound', function (event) {
+        // Konum bulunduğunda en yakın noktayı hesapla
+        map.on("locationfound", function (event) {
             let userLatLng = [event.latlng.lat, event.latlng.lng];
 
             // Kullanıcının polyline üzerindeki en yakın noktasını bul
             let nearestPoint = findClosestPointOnPolyline(userLatLng, routePolyline);
 
-            // Kullanıcının konumunu en yakın noktaya taşı
-            simpleLocate.setLatLng(nearestPoint);
+            // Marker'ı en yakın noktaya taşı
+            userMarker.setLatLng(nearestPoint);
 
             // Haritayı merkeze al
             map.setView(nearestPoint, 15);
         });
 
-        // Verilen bir noktanın polyline üzerindeki en yakın noktasını hesaplar
+        // Konum hatası durumunda uyarı ver
+        map.on("locationerror", function (error) {
+            alert("Konum alınamadı: " + error.message);
+        });
+
+        // En Yakın Noktayı Bulma Fonksiyonu
         function findClosestPointOnPolyline(userLocation, polyline) {
             let latlngs = polyline.getLatLngs();
             let minDistance = Infinity;
@@ -89,14 +107,14 @@
             return closestPoint;
         }
 
-        // İki nokta arasındaki mesafeyi hesaplayan fonksiyon
+        // İki Nokta Arasındaki Mesafeyi Hesaplayan Fonksiyon
         function getDistance(point1, point2) {
             let latDiff = point1[0] - point2[0];
             let lngDiff = point1[1] - point2[1];
             return Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
         }
 
-        // Bir noktanın bir çizgi segmenti üzerindeki en yakın noktasını hesaplar
+        // Bir Noktanın Bir Çizgi Segmenti Üzerindeki En Yakın Noktasını Hesaplayan Fonksiyon
         function projectPointOnSegment(point, segmentStart, segmentEnd) {
             let x0 = point[1], y0 = point[0];
             let x1 = segmentStart[1], y1 = segmentStart[0];
