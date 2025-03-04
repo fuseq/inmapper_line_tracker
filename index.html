@@ -1,100 +1,127 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Leaflet Locate Plugin with Polyline</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet.js ile Kesintisiz Yol Takibi</title>
 
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-  
-  <!-- Leaflet Locate CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.css" />
+    <!-- Leaflet CSS ve JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-
-  <!-- Leaflet Locate Plugin JS -->
-  <script src="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
-  
-  <style>
-    #map {
-      height: 600px;
-      width: 100%;
-    }
-  </style>
+    <style>
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+    </style>
 </head>
+
 <body>
 
-  <div id="map"></div>
+    <div id="map"></div>
 
-  <script>
-    // Create a map and set the view to a default location (New York)
-    var map = L.map('map').setView([40.730610, -73.935242], 13);
+    <script>
+        let map = L.map('map').setView([37.426217, 31.851766], 15);
 
-    // Add OpenStreetMap tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap Katkıda Bulunanlar'
+        }).addTo(map);
 
-    // Define a polyline (for example, a path along a route)
-    var route = [
-      [37.426179,31.851793], // Starting point
-      [37.425932,31.851927], // Intermediate point
-      [37.425719,31.852056]  // Ending point
-    ];
-    
-    // Create a polyline and add it to the map
-    var polyline = L.polyline(route, {color: 'blue'}).addTo(map);
-    
-    // Add Locate Control to the map
-    var locateControl = L.control.locate({
-      position: 'topleft', // Location of the button
-      strings: {
-        title: "Show my location"
-      },
-      locateOptions: {
-        enableHighAccuracy: true // Enable high accuracy for GPS
-      }
-    }).addTo(map);
+        // Örnek Polyline (kesintisiz bir rota)
+        let routeCoordinates = [
+            [37.426217, 31.851766],
+            [37.426034, 31.851874],
+            [37.425868, 31.851976],
+            [37.425693, 31.852078],
+            [37.425500, 31.852200],
+            [37.425300, 31.852350],
+            [37.425000, 31.852500]
+        ];
 
-    // Function to find the nearest point on the polyline
-    function getClosestPoint(latLng) {
-      let closestDistance = Infinity;
-      let closestPoint = null;
+        // Polyline rotasını çiz
+        let routePolyline = L.polyline(routeCoordinates, { color: 'blue' }).addTo(map);
 
-      // Loop through the polyline's latlngs to find the nearest point
-      for (let i = 0; i < route.length - 1; i++) {
-        var segmentStart = L.latLng(route[i]);
-        var segmentEnd = L.latLng(route[i + 1]);
+        // Kullanıcının konumunu göstermek için bir marker
+        let userMarker = L.marker(routeCoordinates[0]).addTo(map)
+            .bindPopup("Sizin Konumunuz")
+            .openPopup();
 
-        // Find the closest point on the segment
-        var closest = segmentStart.closestPoint(latLng, segmentEnd);
+        // Kullanıcının polyline üzerinde kesintisiz ilerlemesini sağlayan fonksiyon
+        function updateUserLocation(position) {
+            let userLatLng = [position.coords.latitude, position.coords.longitude];
 
-        // Calculate the distance from the user's location to this point
-        var distance = latLng.distanceTo(closest);
-        if (distance < closestDistance) {
-          closestDistance = distance;
-          closestPoint = closest;
+            // Kullanıcının polyline üzerindeki en yakın noktasını bul
+            let nearestPoint = findClosestPointOnPolyline(userLatLng, routePolyline);
+
+            // Marker'ı en yakın noktaya taşı
+            userMarker.setLatLng(nearestPoint);
+
+            // Haritayı merkeze al
+            map.setView(nearestPoint, 15);
         }
-      }
 
-      return closestPoint;
-    }
+        // Verilen bir noktanın polyline üzerindeki en yakın noktasını hesaplar
+        function findClosestPointOnPolyline(userLocation, polyline) {
+            let latlngs = polyline.getLatLngs();
+            let minDistance = Infinity;
+            let closestPoint = null;
 
-    // When the location is found, update the map center and the locate control indicator
-    map.on('locationfound', function(e) {
-      var userLatLng = e.latlng;
+            for (let i = 0; i < latlngs.length - 1; i++) {
+                let segmentStart = [latlngs[i].lat, latlngs[i].lng];
+                let segmentEnd = [latlngs[i + 1].lat, latlngs[i + 1].lng];
 
-      // Get the closest point on the polyline to the user's location
-      var closestPoint = getClosestPoint(userLatLng);
+                let projectedPoint = projectPointOnSegment(userLocation, segmentStart, segmentEnd);
+                let distance = getDistance(userLocation, projectedPoint);
 
-      // Move the map center to the closest point on the polyline
-      map.setView(closestPoint, 16); // Adjust zoom level as needed
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestPoint = projectedPoint;
+                }
+            }
 
-      // You can optionally track the user along the path, you may add additional logic here.
-    });
+            return closestPoint;
+        }
 
-  </script>
+        // İki nokta arasındaki mesafeyi hesaplayan fonksiyon
+        function getDistance(point1, point2) {
+            let latDiff = point1[0] - point2[0];
+            let lngDiff = point1[1] - point2[1];
+            return Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+        }
+
+        // Bir noktanın bir çizgi segmenti üzerindeki en yakın noktasını hesaplar
+        function projectPointOnSegment(point, segmentStart, segmentEnd) {
+            let x0 = point[1], y0 = point[0];
+            let x1 = segmentStart[1], y1 = segmentStart[0];
+            let x2 = segmentEnd[1], y2 = segmentEnd[0];
+
+            let dx = x2 - x1;
+            let dy = y2 - y1;
+
+            if (dx === 0 && dy === 0) {
+                return segmentStart;
+            }
+
+            let t = ((x0 - x1) * dx + (y0 - y1) * dy) / (dx * dx + dy * dy);
+
+            if (t < 0) return segmentStart;
+            if (t > 1) return segmentEnd;
+
+            return [y1 + t * dy, x1 + t * dx];
+        }
+
+        // Kullanıcının konumunu sürekli izleme
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(updateUserLocation, function (error) {
+                console.warn("Konum alınamadı:", error.message);
+            }, { enableHighAccuracy: true });
+        } else {
+            alert("Geolocation API desteklenmiyor!");
+        }
+    </script>
+
 </body>
+
 </html>
