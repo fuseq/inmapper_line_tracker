@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Leaflet Locate Plugin Example</title>
+  <title>Leaflet Locate Plugin with Polyline</title>
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
@@ -37,7 +37,17 @@
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    // Add Locate Control to the map (this will display the user's location)
+    // Define a polyline (for example, a path along a route)
+    var route = [
+      [37.426179,31.851793], // Starting point
+      [37.425932,31.851927], // Intermediate point
+      [37.425719,31.852056]  // Ending point
+    ];
+    
+    // Create a polyline and add it to the map
+    var polyline = L.polyline(route, {color: 'blue'}).addTo(map);
+    
+    // Add Locate Control to the map
     var locateControl = L.control.locate({
       position: 'topleft', // Location of the button
       strings: {
@@ -48,7 +58,43 @@
       }
     }).addTo(map);
 
-    // No need to add a custom marker, the Locate control does this automatically.
+    // Function to find the nearest point on the polyline
+    function getClosestPoint(latLng) {
+      let closestDistance = Infinity;
+      let closestPoint = null;
+
+      // Loop through the polyline's latlngs to find the nearest point
+      for (let i = 0; i < route.length - 1; i++) {
+        var segmentStart = L.latLng(route[i]);
+        var segmentEnd = L.latLng(route[i + 1]);
+
+        // Find the closest point on the segment
+        var closest = segmentStart.closestPoint(latLng, segmentEnd);
+
+        // Calculate the distance from the user's location to this point
+        var distance = latLng.distanceTo(closest);
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestPoint = closest;
+        }
+      }
+
+      return closestPoint;
+    }
+
+    // When the location is found, update the map center and the locate control indicator
+    map.on('locationfound', function(e) {
+      var userLatLng = e.latlng;
+
+      // Get the closest point on the polyline to the user's location
+      var closestPoint = getClosestPoint(userLatLng);
+
+      // Move the map center to the closest point on the polyline
+      map.setView(closestPoint, 16); // Adjust zoom level as needed
+
+      // You can optionally track the user along the path, you may add additional logic here.
+    });
+
   </script>
 </body>
 </html>
