@@ -10,6 +10,9 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
+    <!-- Leaflet.SimpleLocate JS -->
+    <script src="https://github.com/mfhsieh/leaflet-simple-locate/releases/latest/download/leaflet-simple-locate.min.js"></script>
+
     <style>
         #map {
             height: 100vh;
@@ -32,32 +35,37 @@
         // Örnek Polyline (kesintisiz bir rota)
         let routeCoordinates = [
             [37.426217, 31.851766],
+            [37.426034, 31.851874],
+            [37.425868, 31.851976],
             [37.425693, 31.852078],
-          
-        
+            [37.425500, 31.852200],
+            [37.425300, 31.852350],
+            [37.425000, 31.852500]
         ];
 
         // Polyline rotasını çiz
         let routePolyline = L.polyline(routeCoordinates, { color: 'blue' }).addTo(map);
 
-        // Kullanıcının konumunu göstermek için bir marker
-        let userMarker = L.marker(routeCoordinates[0]).addTo(map)
-            .bindPopup("Sizin Konumunuz")
-            .openPopup();
+        // Leaflet.SimpleLocate eklentisini başlat
+        let simpleLocate = L.simpleLocate({
+            follow: true, // Kullanıcı hareket ettikçe harita onu takip etsin
+            setView: true, // Konumu merkeze al
+            showCompass: true // Cihazın yönünü göster
+        }).addTo(map);
 
-        // Kullanıcının polyline üzerinde kesintisiz ilerlemesini sağlayan fonksiyon
-        function updateUserLocation(position) {
-            let userLatLng = [position.coords.latitude, position.coords.longitude];
+        // Kullanıcının en yakın noktasını hesapla ve marker'ı güncelle
+        simpleLocate.on('locationfound', function (event) {
+            let userLatLng = [event.latlng.lat, event.latlng.lng];
 
             // Kullanıcının polyline üzerindeki en yakın noktasını bul
             let nearestPoint = findClosestPointOnPolyline(userLatLng, routePolyline);
 
-            // Marker'ı en yakın noktaya taşı
-            userMarker.setLatLng(nearestPoint);
+            // Kullanıcının konumunu en yakın noktaya taşı
+            simpleLocate.setLatLng(nearestPoint);
 
             // Haritayı merkeze al
             map.setView(nearestPoint, 15);
-        }
+        });
 
         // Verilen bir noktanın polyline üzerindeki en yakın noktasını hesaplar
         function findClosestPointOnPolyline(userLocation, polyline) {
@@ -109,14 +117,6 @@
             return [y1 + t * dy, x1 + t * dx];
         }
 
-        // Kullanıcının konumunu sürekli izleme
-        if (navigator.geolocation) {
-            navigator.geolocation.watchPosition(updateUserLocation, function (error) {
-                console.warn("Konum alınamadı:", error.message);
-            }, { enableHighAccuracy: true });
-        } else {
-            alert("Geolocation API desteklenmiyor!");
-        }
     </script>
 
 </body>
