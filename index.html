@@ -1,120 +1,106 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="zh-Hant-TW">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaflet.js Konum Takibi</title>
+    <meta charset="utf-8" />
+    <title>Leaflet.SimpleLocate - Demo (v1.0.4)</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
 
-    <!-- Leaflet CSS ve JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- <script src="src/leaflet-simple-locate.js"></script> -->
+    <script src="dist/leaflet-simple-locate.min.js"></script>
+    <link rel="stylesheet" href="style/demo.css" />
 
     <style>
+        html {
+            font-size: 16px;
+        }
+
+        body {
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+            --primary-rgb: 25, 135, 84;
+        }
+
         #map {
-            height: 100vh;
-            width: 100%;
+            height: calc(var(--vh, 1vh) * 100);
+            width: 100vw;
+            /* transform: rotate(var(--leaflet-simple-locate-orientation, 0deg)); */
         }
     </style>
 </head>
 
 <body>
-
     <div id="map"></div>
 
     <script>
-        let map = L.map('map').setView([37.426217, 31.851766], 15);
+        "use strict";
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap Katkıda Bulunanlar'
+        function set_viewport() {
+            document.documentElement.style.setProperty("--vh", window.innerHeight * 0.01 + "px");
+        }
+
+        set_viewport();
+        window.addEventListener("resize", set_viewport);
+
+        const map = new L.Map("map", {
+            center: [25.0487037, 121.5143449],
+            zoom: 13,
+            zoomControl: false,
+        });
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            minZoom: 7,
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
         }).addTo(map);
 
-        // Polyline rotası
-        let routeCoordinates = [
-            [37.426217, 31.851766],
-            [37.426034, 31.851874],
-            [37.425868, 31.851976],
-            [37.425693, 31.852078],
-            [37.425500, 31.852200],
-            [37.425300, 31.852350],
-            [37.425000, 31.852500]
-        ];
+        const control = new L.Control.SimpleLocate({
+            position: "topleft",
+            className: "button-locate",
+            afterClick: (result) => {
+                console.log("afterClick", result);
+                if (!result.geolocation) console.log("Geolocation Error");
+                if (!result.orientation) console.log("Orientation Error");
+            },
+            afterMarkerAdd: () => {
+                console.log("afterMarkerAdded");
+                const elem = document.getElementById("leaflet-simple-locate-icon-spot");
+                if (elem) {
+                    elem.addEventListener("click", (event) => {
+                        const latlng = control.getLatLng();
+                        const latlng_str = `geolocation: [${Math.round(latlng.lat * 100000) / 100000}, ${Math.round(latlng.lng * 100000) / 100000}]`;
 
-        let routePolyline = L.polyline(routeCoordinates, { color: 'blue' }).addTo(map);
+                        const accuracy = control.getAccuracy();
+                        const accuracy_str = `accuracy: ${Math.round(accuracy)} meter`;
 
-        // Konum indikatörünü göstermek için locate başlat
-        map.locate({
-            watch: true,
-            enableHighAccuracy: true
-        });
+                        const angle = control.getAngle();
+                        const angle_str = `orientation: ${Math.round(angle)} degree`;
 
-        let userMarker = null;
+                        L.popup()
+                            .setLatLng(latlng)
+                            .setContent(`<p style="margin: 0.25rem 0 0.25rem 0">${latlng_str}</p><p style="margin: 0.25rem 0 0.25rem 0">${accuracy_str}</p><p style="margin: 0.25rem 0 0.25rem 0">${angle_str}</p>`)
+                            .openOn(map);
 
-        map.on('locationfound', function (event) {
-            let userLatLng = [event.latlng.lat, event.latlng.lng];
-
-            // En yakın noktayı bul
-            let nearestPoint = findClosestPointOnPolyline(userLatLng, routePolyline);
-
-            // Kullanıcı marker'ı yoksa oluştur, varsa güncelle
-            if (!userMarker) {
-                userMarker = L.marker(nearestPoint, { icon: L.icon({ iconUrl: 'https://leafletjs.com/examples/custom-icons/leaf-green.png', iconSize: [32, 32] }) }).addTo(map);
-            } else {
-                userMarker.setLatLng(nearestPoint);
-            }
-
-            // Haritayı merkeze al
-            map.setView(nearestPoint, 15);
-        });
-
-        function findClosestPointOnPolyline(userLocation, polyline) {
-            let latlngs = polyline.getLatLngs();
-            let minDistance = Infinity;
-            let closestPoint = null;
-
-            for (let i = 0; i < latlngs.length - 1; i++) {
-                let segmentStart = [latlngs[i].lat, latlngs[i].lng];
-                let segmentEnd = [latlngs[i + 1].lat, latlngs[i + 1].lng];
-
-                let projectedPoint = projectPointOnSegment(userLocation, segmentStart, segmentEnd);
-                let distance = getDistance(userLocation, projectedPoint);
-
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    closestPoint = projectedPoint;
+                        event.stopPropagation();
+                        event.preventDefault();
+                    });
                 }
-            }
+            },
+            // afterDeviceMove: (event) => {
+            //     console.log(event);
+            // }
+        }).addTo(map);
 
-            return closestPoint;
-        }
+        map.on("locationfound", (event) => console.log(event));
+        map.on("locationerror", (event) => console.log(event));
+        L.DomEvent.on(window, "ondeviceorientationabsolute" in window ? "deviceorientationabsolute" : "deviceorientation", (event) => console.log(event));
 
-        function getDistance(point1, point2) {
-            let latDiff = point1[0] - point2[0];
-            let lngDiff = point1[1] - point2[1];
-            return Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
-        }
-
-        function projectPointOnSegment(point, segmentStart, segmentEnd) {
-            let x0 = point[1], y0 = point[0];
-            let x1 = segmentStart[1], y1 = segmentStart[0];
-            let x2 = segmentEnd[1], y2 = segmentEnd[0];
-
-            let dx = x2 - x1;
-            let dy = y2 - y1;
-
-            if (dx === 0 && dy === 0) {
-                return segmentStart;
-            }
-
-            let t = ((x0 - x1) * dx + (y0 - y1) * dy) / (dx * dx + dy * dy);
-
-            if (t < 0) return segmentStart;
-            if (t > 1) return segmentEnd;
-
-            return [y1 + t * dy, x1 + t * dx];
-        }
     </script>
-
 </body>
 
 </html>
