@@ -4,14 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaflet.js ile Kesintisiz Yol Takibi</title>
+    <title>Leaflet.js Konum Takibi</title>
 
     <!-- Leaflet CSS ve JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
-    <!-- Leaflet.SimpleLocate -->
-    <script src="https://unpkg.com/leaflet-simple-locate/dist/leaflet-simple-locate.min.js"></script>
 
     <style>
         #map {
@@ -32,7 +29,7 @@
             attribution: '© OpenStreetMap Katkıda Bulunanlar'
         }).addTo(map);
 
-        // Örnek Polyline (kesintisiz bir rota)
+        // Polyline rotası
         let routeCoordinates = [
             [37.426217, 31.851766],
             [37.426034, 31.851874],
@@ -43,38 +40,33 @@
             [37.425000, 31.852500]
         ];
 
-        // Polyline rotasını çiz
         let routePolyline = L.polyline(routeCoordinates, { color: 'blue' }).addTo(map);
 
-        // Leaflet.SimpleLocate başlat
-        let locateControl = L.simpleLocate({
-            position: 'topright',
-            drawCircle: false,
-            setView: true,
-            keepCurrentZoomLevel: true,
-            stopOnViewReset: false,
-            showCompass: true,
-            locateOptions: {
-                enableHighAccuracy: true,
-                watch: true
-            }
-        }).addTo(map);
+        // Konum indikatörünü göstermek için locate başlat
+        map.locate({
+            watch: true,
+            enableHighAccuracy: true
+        });
 
-        // Konum güncellendiğinde en yakın noktaya snapleme
+        let userMarker = null;
+
         map.on('locationfound', function (event) {
             let userLatLng = [event.latlng.lat, event.latlng.lng];
 
-            // Kullanıcının polyline üzerindeki en yakın noktasını bul
+            // En yakın noktayı bul
             let nearestPoint = findClosestPointOnPolyline(userLatLng, routePolyline);
 
-            // Kullanıcıyı en yakın noktaya taşı
-            locateControl.setMarkerPosition(nearestPoint);
+            // Kullanıcı marker'ı yoksa oluştur, varsa güncelle
+            if (!userMarker) {
+                userMarker = L.marker(nearestPoint, { icon: L.icon({ iconUrl: 'https://leafletjs.com/examples/custom-icons/leaf-green.png', iconSize: [32, 32] }) }).addTo(map);
+            } else {
+                userMarker.setLatLng(nearestPoint);
+            }
 
             // Haritayı merkeze al
             map.setView(nearestPoint, 15);
         });
 
-        // Verilen bir noktanın polyline üzerindeki en yakın noktasını hesaplar
         function findClosestPointOnPolyline(userLocation, polyline) {
             let latlngs = polyline.getLatLngs();
             let minDistance = Infinity;
@@ -96,14 +88,12 @@
             return closestPoint;
         }
 
-        // İki nokta arasındaki mesafeyi hesaplayan fonksiyon
         function getDistance(point1, point2) {
             let latDiff = point1[0] - point2[0];
             let lngDiff = point1[1] - point2[1];
             return Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
         }
 
-        // Bir noktanın bir çizgi segmenti üzerindeki en yakın noktasını hesaplar
         function projectPointOnSegment(point, segmentStart, segmentEnd) {
             let x0 = point[1], y0 = point[0];
             let x1 = segmentStart[1], y1 = segmentStart[0];
