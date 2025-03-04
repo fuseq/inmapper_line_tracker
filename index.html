@@ -1,142 +1,54 @@
 <!DOCTYPE html>
-<html lang="tr">
-
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaflet.js ile Kesintisiz Yol Takibi</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leaflet Locate Plugin Example</title>
 
-    <!-- Leaflet CSS ve JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  
+  <!-- Leaflet Locate CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.css" />
 
-    <!-- Leaflet LocateControl CSS ve JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.locatecontrol/dist/leaflet.locatecontrol.min.css" />
-    <script src="https://unpkg.com/leaflet.locatecontrol/dist/leaflet.locatecontrol.min.js"></script>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 
-    <style>
-        #map {
-            height: 100vh;
-            width: 100%;
-        }
-    </style>
+  <!-- Leaflet Locate Plugin JS -->
+  <script src="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
+  
+  <style>
+    #map {
+      height: 600px;
+      width: 100%;
+    }
+  </style>
 </head>
-
 <body>
 
-    <div id="map"></div>
+  <div id="map"></div>
 
-    <script>
-        let map = L.map('map').setView([37.426217, 31.851766], 15);
+  <script>
+    // Create a map and set the view to a default location (New York)
+    var map = L.map('map').setView([40.730610, -73.935242], 13);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap Katkıda Bulunanlar'
-        }).addTo(map);
+    // Add OpenStreetMap tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
 
-        // Örnek Polyline (kesintisiz bir rota)
-        let routeCoordinates = [
-            [37.426217, 31.851766],
-            [37.426034, 31.851874],
-            [37.425868, 31.851976],
-            [37.425693, 31.852078],
-            [37.425500, 31.852200],
-            [37.425300, 31.852350],
-            [37.425000, 31.852500]
-        ];
+    // Add Locate Control to the map (this will display the user's location)
+    var locateControl = L.control.locate({
+      position: 'topleft', // Location of the button
+      strings: {
+        title: "Show my location"
+      },
+      locateOptions: {
+        enableHighAccuracy: true // Enable high accuracy for GPS
+      }
+    }).addTo(map);
 
-        // Polyline rotasını çiz
-        let routePolyline = L.polyline(routeCoordinates, { color: 'blue' }).addTo(map);
-
-        // Kullanıcının konumunu göstermek için bir marker
-        let userMarker = L.marker(routeCoordinates[0]).addTo(map)
-            .bindPopup("Sizin Konumunuz")
-            .openPopup();
-
-        // Kullanıcı konumunu harita üzerinde göstermek için LocateControl eklentisini ekleyin
-        L.control.locate({
-            position: 'topright',  // Locate button konumunu belirleyin
-            drawCircle: true,      // Konumda bir çember çizilsin mi
-            follow: true,          // Konum sürekli takip edilsin
-            setView: true,         // Konum bulunduğunda haritayı merkezlesin
-            keepCurrentZoomLevel: true,  // Zemin yakınlaştırma seviyesini koruyun
-            icon: 'fa fa-location-arrow'  // Locate button için ikon
-        }).addTo(map);
-
-        // Kullanıcının konumunu sürekli izleme
-        if (navigator.geolocation) {
-            navigator.geolocation.watchPosition(updateUserLocation, function (error) {
-                console.warn("Konum alınamadı:", error.message);
-            }, { enableHighAccuracy: true });
-        } else {
-            alert("Geolocation API desteklenmiyor!");
-        }
-
-        // Kullanıcının konumunu güncelleyen fonksiyon
-        function updateUserLocation(position) {
-            let userLatLng = [position.coords.latitude, position.coords.longitude];
-
-            // Kullanıcının polyline üzerindeki en yakın noktasını bul
-            let nearestPoint = findClosestPointOnPolyline(userLatLng, routePolyline);
-
-            // Marker'ı en yakın noktaya taşı
-            userMarker.setLatLng(nearestPoint);
-
-            // Haritayı merkeze al
-            map.setView(nearestPoint, 15);
-        }
-
-        // Verilen bir noktanın polyline üzerindeki en yakın noktasını hesaplar
-        function findClosestPointOnPolyline(userLocation, polyline) {
-            let latlngs = polyline.getLatLngs();
-            let minDistance = Infinity;
-            let closestPoint = null;
-
-            for (let i = 0; i < latlngs.length - 1; i++) {
-                let segmentStart = [latlngs[i].lat, latlngs[i].lng];
-                let segmentEnd = [latlngs[i + 1].lat, latlngs[i + 1].lng];
-
-                let projectedPoint = projectPointOnSegment(userLocation, segmentStart, segmentEnd);
-                let distance = getDistance(userLocation, projectedPoint);
-
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    closestPoint = projectedPoint;
-                }
-            }
-
-            return closestPoint;
-        }
-
-        // İki nokta arasındaki mesafeyi hesaplayan fonksiyon
-        function getDistance(point1, point2) {
-            let latDiff = point1[0] - point2[0];
-            let lngDiff = point1[1] - point2[1];
-            return Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
-        }
-
-        // Bir noktanın bir çizgi segmenti üzerindeki en yakın noktasını hesaplar
-        function projectPointOnSegment(point, segmentStart, segmentEnd) {
-            let x0 = point[1], y0 = point[0];
-            let x1 = segmentStart[1], y1 = segmentStart[0];
-            let x2 = segmentEnd[1], y2 = segmentEnd[0];
-
-            let dx = x2 - x1;
-            let dy = y2 - y1;
-
-            if (dx === 0 && dy === 0) {
-                return segmentStart;
-            }
-
-            let t = ((x0 - x1) * dx + (y0 - y1) * dy) / (dx * dx + dy * dy);
-
-            if (t < 0) return segmentStart;
-            if (t > 1) return segmentEnd;
-
-            return [y1 + t * dy, x1 + t * dx];
-        }
-
-    </script>
-
+    // No need to add a custom marker, the Locate control does this automatically.
+  </script>
 </body>
-
 </html>
