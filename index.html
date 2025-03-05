@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaflet Locate Control</title>
+    <title>Leaflet Konum Kontrol</title>
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -21,12 +21,23 @@
             width: 100%;
             height: 100vh; /* Full screen height */
         }
+        #status {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            font-size: 16px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
 
-    <!-- Map Container -->
     <div id="map"></div>
+    <div id="status">Konum Bekleniyor...</div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -34,15 +45,19 @@
     <script src="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
 
     <script>
-        // Initialize map
-        var map = L.map('map').setView([0, 0], 13); 
+        // Belirlenen alanın sınırları
+        const minLat = 37.425808, maxLat = 37.426196;
+        const minLng = 31.851793, maxLng = 31.852540;
 
-        // Add OpenStreetMap tile layer
+        // Haritayı başlat
+        var map = L.map('map').setView([37.426, 31.852], 18);
+
+        // OpenStreetMap katmanı ekle
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // Add Locate Control with auto-start
+        // Kullanıcı konumunu takip eden Locate Control eklentisi
         var lc = L.control.locate({
             position: 'topright',
             drawCircle: true,
@@ -50,7 +65,7 @@
             setView: 'always',
             keepCurrentZoomLevel: false,
             markerStyle: {
-                color: '#136aec', 
+                color: '#136aec',
                 fillColor: '#2a93ee',
                 fillOpacity: 0.6
             },
@@ -64,13 +79,36 @@
             }
         }).addTo(map);
 
-        // Automatically start location detection on page load
+        // Kullanıcının bölge içinde olup olmadığını kontrol eden fonksiyon
+        function checkLocation(lat, lng) {
+            if (lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng) {
+                document.getElementById("status").innerText = "Kullanıcı: 📍 İçeride";
+                document.getElementById("status").style.background = "lightgreen";
+            } else {
+                document.getElementById("status").innerText = "Kullanıcı: ❌ Dışarıda";
+                document.getElementById("status").style.background = "lightcoral";
+            }
+        }
+
+        // Konum güncellendiğinde kullanıcı koordinatlarını al ve kontrol et
+        map.on('locationfound', function(e) {
+            var userLat = e.latitude;
+            var userLng = e.longitude;
+            checkLocation(userLat, userLng);
+        });
+
+        // Konum bulunamazsa hata mesajı göster
+        map.on('locationerror', function(e) {
+            document.getElementById("status").innerText = "Konum Alınamadı ❌";
+            document.getElementById("status").style.background = "lightcoral";
+        });
+
+        // Sayfa yüklenince otomatik olarak konumu al
         map.on('load', function() {
             lc.start();
         });
 
-        // Manually trigger the 'load' event to start locating
-        map.fire('load');
+        map.fire('load'); // Manuel olarak 'load' event'i tetikle
     </script>
 
 </body>
