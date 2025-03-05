@@ -1,107 +1,76 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaflet - Özel Konum Takibi</title>
+    <title>Leaflet Locate Control</title>
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet Locate Control CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.css" />
 
     <style>
-        body {
+        body, html {
             margin: 0;
             padding: 0;
+            width: 100%;
+            height: 100%;
         }
         #map {
-            height: 100vh;
             width: 100%;
+            height: 100vh; /* Full screen height */
         }
     </style>
 </head>
 <body>
 
-    <!-- Harita Konteyneri -->
+    <!-- Map Container -->
     <div id="map"></div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <!-- Leaflet Döndürülmüş Marker (Yön İçin) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-rotatedmarker/0.2.0/leaflet.rotatedMarker.js"></script>
+    <!-- Leaflet Locate Control JS -->
+    <script src="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
 
     <script>
-        // 🌍 Haritayı oluştur
-        var map = L.map('map').setView([51.505, -0.09], 13);
+        // Initialize map
+        var map = L.map('map').setView([0, 0], 13); 
 
-        // 🗺️ OpenStreetMap katmanı ekle
+        // Add OpenStreetMap tile layer
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // 📍 Kullanıcının konumunu gösterecek marker
-        var userMarker = L.marker([51.505, -0.09], {
-            icon: L.icon({
-                iconUrl: 'https://cdn-icons-png.flaticon.com/512/535/535137.png', // Özel icon
-                iconSize: [40, 40],
-                iconAnchor: [20, 20]
-            }),
-            rotationAngle: 0, // Başlangıç yönü
-            draggable: false
+        // Add Locate Control with auto-start
+        var lc = L.control.locate({
+            position: 'topright',
+            drawCircle: true,
+            follow: true,
+            setView: 'always',
+            keepCurrentZoomLevel: false,
+            markerStyle: {
+                color: '#136aec', 
+                fillColor: '#2a93ee',
+                fillOpacity: 0.6
+            },
+            circleStyle: {
+                color: '#136aec',
+                fillColor: '#136aec',
+                fillOpacity: 0.2
+            },
+            locateOptions: {
+                enableHighAccuracy: true
+            }
         }).addTo(map);
 
-        // 🎯 Konum doğruluk çemberi
-        var accuracyCircle = L.circle([51.505, -0.09], {
-            radius: 50, // Başlangıç yarıçapı (gerçek konum alındığında değişecek)
-            color: 'blue',
-            fillColor: 'blue',
-            fillOpacity: 0.2
-        }).addTo(map);
+        // Automatically start location detection on page load
+        map.on('load', function() {
+            lc.start();
+        });
 
-        // 🌐 Kullanıcının yönünü göstermek için üçgen/pusula işareti
-        var directionMarker = L.marker([51.505, -0.09], {
-            icon: L.divIcon({
-                className: 'direction-icon',
-                html: '▲', // Yön oku
-                iconSize: [20, 20]
-            }),
-            rotationAngle: 0,
-            draggable: false
-        }).addTo(map);
-
-        // 📡 Konumu ve hareketi takip etme fonksiyonu
-        function updateLocation(position) {
-            var lat = position.coords.latitude;
-            var lng = position.coords.longitude;
-            var accuracy = position.coords.accuracy;
-            var heading = position.coords.heading || 0; // Yön bilgisi (bazı cihazlarda null olabilir)
-
-            var newLatLng = [lat, lng];
-
-            // 📌 Marker'ı yeni konuma taşı
-            userMarker.setLatLng(newLatLng);
-            accuracyCircle.setLatLng(newLatLng).setRadius(accuracy);
-            directionMarker.setLatLng(newLatLng);
-            
-            // 🧭 Kullanıcının yönünü güncelle (bazı cihazlarda heading null olabilir)
-            userMarker.setRotationAngle(heading);
-            directionMarker.setRotationAngle(heading);
-
-            // 📡 Haritayı yeni konuma kaydır
-            map.setView(newLatLng, map.getZoom());
-        }
-
-        // 🚀 Konumu gerçek zamanlı güncelleme
-        if ("geolocation" in navigator) {
-            navigator.geolocation.watchPosition(updateLocation, 
-                function(error) {
-                    console.error("Konum alınamadı:", error);
-                }, 
-                { enableHighAccuracy: true, maximumAge: 1000 }
-            );
-        } else {
-            alert("Tarayıcınız konum bilgisini desteklemiyor.");
-        }
+        // Manually trigger the 'load' event to start locating
+        map.fire('load');
     </script>
 
 </body>
