@@ -1,127 +1,108 @@
 <!DOCTYPE html>
 <html lang="tr">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaflet.js ile Kesintisiz Yol Takibi</title>
+    <title>Leaflet - Özel Konum Takibi</title>
 
-    <!-- Leaflet CSS ve JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
     <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
         #map {
             height: 100vh;
             width: 100%;
         }
     </style>
 </head>
-
 <body>
 
+    <!-- Harita Konteyneri -->
     <div id="map"></div>
 
-    <script>
-        let map = L.map('map').setView([37.426217, 31.851766], 15);
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+    <!-- Leaflet Döndürülmüş Marker (Yön İçin) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-rotatedmarker/0.2.0/leaflet.rotatedMarker.js"></script>
+
+    <script>
+        // 🌍 Haritayı oluştur
+        var map = L.map('map').setView([51.505, -0.09], 13);
+
+        // 🗺️ OpenStreetMap katmanı ekle
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap Katkıda Bulunanlar'
+            attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // Örnek Polyline (kesintisiz bir rota)
-        let routeCoordinates = [
-            [37.426217, 31.851766],
-            [37.426034, 31.851874],
-            [37.425868, 31.851976],
-            [37.425693, 31.852078],
-            [37.425500, 31.852200],
-            [37.425300, 31.852350],
-            [37.425000, 31.852500]
-        ];
+        // 📍 Kullanıcının konumunu gösterecek marker
+        var userMarker = L.marker([51.505, -0.09], {
+            icon: L.icon({
+                iconUrl: 'https://cdn-icons-png.flaticon.com/512/535/535137.png', // Özel icon
+                iconSize: [40, 40],
+                iconAnchor: [20, 20]
+            }),
+            rotationAngle: 0, // Başlangıç yönü
+            draggable: false
+        }).addTo(map);
 
-        // Polyline rotasını çiz
-        let routePolyline = L.polyline(routeCoordinates, { color: 'blue' }).addTo(map);
+        // 🎯 Konum doğruluk çemberi
+        var accuracyCircle = L.circle([51.505, -0.09], {
+            radius: 50, // Başlangıç yarıçapı (gerçek konum alındığında değişecek)
+            color: 'blue',
+            fillColor: 'blue',
+            fillOpacity: 0.2
+        }).addTo(map);
 
-        // Kullanıcının konumunu göstermek için bir marker
-        let userMarker = L.marker(routeCoordinates[0]).addTo(map)
-            .bindPopup("Sizin Konumunuz")
-            .openPopup();
+        // 🌐 Kullanıcının yönünü göstermek için üçgen/pusula işareti
+        var directionMarker = L.marker([51.505, -0.09], {
+            icon: L.divIcon({
+                className: 'direction-icon',
+                html: '▲', // Yön oku
+                iconSize: [20, 20]
+            }),
+            rotationAngle: 0,
+            draggable: false
+        }).addTo(map);
 
-        // Kullanıcının polyline üzerinde kesintisiz ilerlemesini sağlayan fonksiyon
-        function updateUserLocation(position) {
-            let userLatLng = [position.coords.latitude, position.coords.longitude];
+        // 📡 Konumu ve hareketi takip etme fonksiyonu
+        function updateLocation(position) {
+            var lat = position.coords.latitude;
+            var lng = position.coords.longitude;
+            var accuracy = position.coords.accuracy;
+            var heading = position.coords.heading || 0; // Yön bilgisi (bazı cihazlarda null olabilir)
 
-            // Kullanıcının polyline üzerindeki en yakın noktasını bul
-            let nearestPoint = findClosestPointOnPolyline(userLatLng, routePolyline);
+            var newLatLng = [lat, lng];
 
-            // Marker'ı en yakın noktaya taşı
-            userMarker.setLatLng(nearestPoint);
+            // 📌 Marker'ı yeni konuma taşı
+            userMarker.setLatLng(newLatLng);
+            accuracyCircle.setLatLng(newLatLng).setRadius(accuracy);
+            directionMarker.setLatLng(newLatLng);
+            
+            // 🧭 Kullanıcının yönünü güncelle (bazı cihazlarda heading null olabilir)
+            userMarker.setRotationAngle(heading);
+            directionMarker.setRotationAngle(heading);
 
-            // Haritayı merkeze al
-            map.setView(nearestPoint, 15);
+            // 📡 Haritayı yeni konuma kaydır
+            map.setView(newLatLng, map.getZoom());
         }
 
-        // Verilen bir noktanın polyline üzerindeki en yakın noktasını hesaplar
-        function findClosestPointOnPolyline(userLocation, polyline) {
-            let latlngs = polyline.getLatLngs();
-            let minDistance = Infinity;
-            let closestPoint = null;
-
-            for (let i = 0; i < latlngs.length - 1; i++) {
-                let segmentStart = [latlngs[i].lat, latlngs[i].lng];
-                let segmentEnd = [latlngs[i + 1].lat, latlngs[i + 1].lng];
-
-                let projectedPoint = projectPointOnSegment(userLocation, segmentStart, segmentEnd);
-                let distance = getDistance(userLocation, projectedPoint);
-
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    closestPoint = projectedPoint;
-                }
-            }
-
-            return closestPoint;
-        }
-
-        // İki nokta arasındaki mesafeyi hesaplayan fonksiyon
-        function getDistance(point1, point2) {
-            let latDiff = point1[0] - point2[0];
-            let lngDiff = point1[1] - point2[1];
-            return Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
-        }
-
-        // Bir noktanın bir çizgi segmenti üzerindeki en yakın noktasını hesaplar
-        function projectPointOnSegment(point, segmentStart, segmentEnd) {
-            let x0 = point[1], y0 = point[0];
-            let x1 = segmentStart[1], y1 = segmentStart[0];
-            let x2 = segmentEnd[1], y2 = segmentEnd[0];
-
-            let dx = x2 - x1;
-            let dy = y2 - y1;
-
-            if (dx === 0 && dy === 0) {
-                return segmentStart;
-            }
-
-            let t = ((x0 - x1) * dx + (y0 - y1) * dy) / (dx * dx + dy * dy);
-
-            if (t < 0) return segmentStart;
-            if (t > 1) return segmentEnd;
-
-            return [y1 + t * dy, x1 + t * dx];
-        }
-
-        // Kullanıcının konumunu sürekli izleme
-        if (navigator.geolocation) {
-            navigator.geolocation.watchPosition(updateUserLocation, function (error) {
-                console.warn("Konum alınamadı:", error.message);
-            }, { enableHighAccuracy: true });
+        // 🚀 Konumu gerçek zamanlı güncelleme
+        if ("geolocation" in navigator) {
+            navigator.geolocation.watchPosition(updateLocation, 
+                function(error) {
+                    console.error("Konum alınamadı:", error);
+                }, 
+                { enableHighAccuracy: true, maximumAge: 1000 }
+            );
         } else {
-            alert("Geolocation API desteklenmiyor!");
+            alert("Tarayıcınız konum bilgisini desteklemiyor.");
         }
     </script>
 
 </body>
-
 </html>
