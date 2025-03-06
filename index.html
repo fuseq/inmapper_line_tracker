@@ -19,25 +19,30 @@
         }
         #map {
             width: 100%;
-            height: 100vh; /* Full screen height */
+            height: 100vh;
         }
-        #status {
+        .popup {
             position: absolute;
-            top: 10px;
-            left: 10px;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
             background: white;
-            padding: 10px;
+            padding: 10px 20px;
             border-radius: 5px;
             box-shadow: 0 0 5px rgba(0,0,0,0.3);
             font-size: 16px;
             font-weight: bold;
+            transition: top 0.5s ease-in-out;
+        }
+        .popup.show {
+            top: 10px;
         }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
-    <div id="status">Konum Bekleniyor...</div>
+    <div id="popup" class="popup"></div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -45,70 +50,53 @@
     <script src="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
 
     <script>
-        // Belirlenen alanın sınırları
         const minLat = 37.425808, maxLat = 37.426196;
         const minLng = 31.851793, maxLng = 31.852540;
 
-        // Haritayı başlat
         var map = L.map('map').setView([37.426, 31.852], 18);
 
-        // OpenStreetMap katmanı ekle
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // Kullanıcı konumunu takip eden Locate Control eklentisi
         var lc = L.control.locate({
             position: 'topright',
             drawCircle: true,
-            follow: true,
-            setView: 'always',
-            keepCurrentZoomLevel: false,
-            markerStyle: {
-                color: '#136aec',
-                fillColor: '#2a93ee',
-                fillOpacity: 0.6
-            },
-            circleStyle: {
-                color: '#136aec',
-                fillColor: '#136aec',
-                fillOpacity: 0.2
-            },
-            locateOptions: {
-                enableHighAccuracy: true
-            }
+            follow: false,
+            setView: 'once',
+            locateOptions: { enableHighAccuracy: true }
         }).addTo(map);
 
-        // Kullanıcının bölge içinde olup olmadığını kontrol eden fonksiyon
         function checkLocation(lat, lng) {
+            let popup = document.getElementById("popup");
             if (lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng) {
-                document.getElementById("status").innerText = "Kullanıcı: 📍 İçeride";
-                document.getElementById("status").style.background = "lightgreen";
+                popup.innerText = "📍 İçeride";
+                popup.style.background = "lightgreen";
             } else {
-                document.getElementById("status").innerText = "Kullanıcı: ❌ Dışarıda";
-                document.getElementById("status").style.background = "lightcoral";
+                popup.innerText = "❌ Dışarıda";
+                popup.style.background = "lightcoral";
             }
+            popup.classList.add("show");
+            setTimeout(() => popup.classList.remove("show"), 3000);
         }
 
-        // Konum güncellendiğinde kullanıcı koordinatlarını al ve kontrol et
         map.on('locationfound', function(e) {
-            var userLat = e.latitude;
-            var userLng = e.longitude;
-            checkLocation(userLat, userLng);
+            checkLocation(e.latitude, e.longitude);
         });
 
-        // Konum bulunamazsa hata mesajı göster
-        map.on('locationerror', function(e) {
-            document.getElementById("status").innerText = "Konum Alınamadı ❌";
-            document.getElementById("status").style.background = "lightcoral";
+        map.on('locationerror', function() {
+            let popup = document.getElementById("popup");
+            popup.innerText = "Konum Alınamadı ❌";
+            popup.style.background = "lightcoral";
+            popup.classList.add("show");
+            setTimeout(() => popup.classList.remove("show"), 3000);
         });
 
-        // Sayfa yüklenince otomatik olarak konumu al
         map.on('load', function() {
             lc.start();
         });
 
-        map.fire('load'); // Manuel olarak 'load' event'i tetikle
+        map.fire('load');
     </script>
 
 </body>
