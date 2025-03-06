@@ -9,95 +9,20 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <!-- Leaflet Locate Control CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.css" />
-
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-        }
-        #map {
-            width: 100%;
-            height: 100vh;
-        }
-        .popup {
-            position: absolute;
-            top: -50px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            box-shadow: 0 0 5px rgba(0,0,0,0.3);
-            font-size: 16px;
-            font-weight: bold;
-            transition: top 0.5s ease-in-out;
-        }
-        .popup.show {
-            top: 10px;
-        }
-    </style>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-    <div id="map"></div>
     <div id="popup" class="popup"></div>
+    <div id="map"></div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Leaflet Locate Control JS -->
     <script src="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
-
-    <script>
-        const minLat = 37.425808, maxLat = 37.426196;
-        const minLng = 31.851793, maxLng = 31.852540;
-
-        var map = L.map('map').setView([37.426, 31.852], 18);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
-
-        var lc = L.control.locate({
-            position: 'topright',
-            drawCircle: true,
-            follow: false,
-            setView: 'once',
-            locateOptions: { enableHighAccuracy: true }
-        }).addTo(map);
-
-        function checkLocation(lat, lng) {
-            let popup = document.getElementById("popup");
-            if (lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng) {
-                popup.innerText = "📍 İçeride";
-                popup.style.background = "lightgreen";
-            } else {
-                popup.innerText = "❌ Dışarıda";
-                popup.style.background = "lightcoral";
-            }
-            popup.classList.add("show");
-            setTimeout(() => popup.classList.remove("show"), 3000);
-        }
-
-        map.on('locationfound', function(e) {
-            checkLocation(e.latitude, e.longitude);
-        });
-
-        map.on('locationerror', function() {
-            let popup = document.getElementById("popup");
-            popup.innerText = "Konum Alınamadı ❌";
-            popup.style.background = "lightcoral";
-            popup.classList.add("show");
-            setTimeout(() => popup.classList.remove("show"), 3000);
-        });
-
-        map.on('load', function() {
-            lc.start();
-        });
-
-        map.fire('load');
-    </script>
+    <!-- Custom JS -->
+    <script src="script.js"></script>
 
 </body>
 </html>
