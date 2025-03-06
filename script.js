@@ -1,6 +1,5 @@
-const minLat = 37.425808, maxLat = 37.426196;
-const minLng = 31.851793, maxLng = 31.852540;
-
+const minLat = 40.9931327, maxLat = 40.9897231;
+const minLng = 29.0386154, maxLng = 29.0350682;
 let linesArray = []; // Tüm çizgileri tutacak dizi
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -47,11 +46,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // SVG'deki lokal koordinatları Lat/Lng'ye çeviren fonksiyon
     function localCoordinateToLatLng(x, y) {
-        var northWestLat = 37.425808;
-        var northWestLng = 31.851793;
-        var southEastLat = 37.426196;
-        var southEastLng = 31.852540;
-
+        var northWestLat = 40.9931327;
+        var northWestLng = 29.0386154;
+        var southEastLat = 40.9897231;
+        var southEastLng = 29.0350682;
         var latRealDiff = northWestLat - southEastLat;
         var lngRealDiff = southEastLng - northWestLng;
 
@@ -64,7 +62,7 @@ document.addEventListener("DOMContentLoaded", function() {
         return new L.LatLng(northWestLat - latLocalDiff, northWestLng + lngLocalDiff);
     }
 
-    var map = L.map('map').setView([37.426, 31.852], 18);
+    var map = L.map('map').setView([40.991488, 29.036736], 18);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
