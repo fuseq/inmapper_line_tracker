@@ -64,7 +64,7 @@ document.addEventListener("DOMContentLoaded", function() {
         return new L.LatLng(northWestLat - latLocalDiff, northWestLng + lngLocalDiff);
     }
 
-    var map = L.map('map').setView([40.991488, 29.036736], 18);
+    var map = L.map('map').setView([37.426, 31.852], 18);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
@@ -80,17 +80,17 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function checkLocation(lat, lng) {
         let popup = document.getElementById("popup");
-        if (lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng) {
-            popup.innerText = "📍 İçeride";
-            popup.style.background = "lightgreen";
-        } else {
+
+        // Dışarıda durumunu kontrol et
+        if (lat < minLat || lat > maxLat || lng < minLng || lng > maxLng) {
             popup.innerText = "❌ Dışarıda";
             popup.style.background = "lightcoral";
+            popup.classList.add("show");
+            setTimeout(() => popup.classList.remove("show"), 3000);
+        } else {
+            // İçeride değilse en yakın line'ı bul
+            findClosestLine(lat, lng);
         }
-        popup.classList.add("show");
-        setTimeout(() => popup.classList.remove("show"), 3000);
-
-        findClosestLine(lat, lng); // En yakın line'ı bul
     }
 
     function findClosestLine(lat, lng) {
