@@ -4,66 +4,44 @@ let linesArray = []; // Tüm çizgileri tutacak dizi
 
 document.addEventListener("DOMContentLoaded", function() {
 
-    // SVG dosyasını 'files' klasöründen yükleme
     fetch('files/0.svg')
-    .then(response => response.text()) // Dosyayı metin olarak al
+    .then(response => response.text())
     .then(svgText => {
-        // SVG içeriğini bir DOM elementine dönüştür
         const parser = new DOMParser();
         const svgDoc = parser.parseFromString(svgText, "image/svg+xml");
 
-        // 'Doors' id'sine sahip <g> öğesini al
         const doorsGroup = svgDoc.getElementById('Doors');
-        
         if (doorsGroup) {
-            // Bu grup içerisindeki tüm <line> öğelerini al
             const lines = doorsGroup.getElementsByTagName('line');
+            const viewBox = svgDoc.documentElement.viewBox.baseVal;
             
-            // <line> öğeleri üzerinde döngü yap
             Array.from(lines).forEach(line => {
-                const id = line.id;  // line id'si
-                const x1 = parseFloat(line.getAttribute('x1')); // Başlangıç X koordinatı
-                const y1 = parseFloat(line.getAttribute('y1')); // Başlangıç Y koordinatı
-                const x2 = parseFloat(line.getAttribute('x2')); // Bitiş X koordinatı
-                const y2 = parseFloat(line.getAttribute('y2')); // Bitiş Y koordinatı
-                
-                // Koordinatları LatLng'ye dönüştür
-                const startLatLng = localCoordinateToLatLng(x1, y1);
-                const endLatLng = localCoordinateToLatLng(x2, y2);
-                
-                // Line'ı diziye ekle
-                linesArray.push({
-                    id: id,
-                    start: startLatLng,
-                    end: endLatLng
-                });
-                
-                console.log(`Line ID: ${id}, Start: (${startLatLng.lat}, ${startLatLng.lng}), End: (${endLatLng.lat}, ${endLatLng.lng})`);
+                const id = line.id;
+                const x1 = parseFloat(line.getAttribute('x1'));
+                const y1 = parseFloat(line.getAttribute('y1'));
+                const x2 = parseFloat(line.getAttribute('x2'));
+                const y2 = parseFloat(line.getAttribute('y2'));
+
+                const startLatLng = localCoordinateToLatLng(x1, y1, viewBox);
+                const endLatLng = localCoordinateToLatLng(x2, y2, viewBox);
+
+                linesArray.push({ id, start: startLatLng, end: endLatLng });
             });
         }
     })
-    .catch(error => console.error('SVG dosyası okunurken hata oluştu:', error));
+    .catch(error => console.error('SVG yüklenirken hata:', error));
 
-    // SVG'deki lokal koordinatları Lat/Lng'ye çeviren fonksiyon
-    function localCoordinateToLatLng(x, y) {
-        var northWestLat = 40.9931327;
-        var northWestLng = 29.0386154;
-        var southEastLat = 40.9897231;
-        var southEastLng = 29.0350682;
-        var latRealDiff = northWestLat - southEastLat;
-        var lngRealDiff = southEastLng - northWestLng;
+    function localCoordinateToLatLng(x, y, viewBox) {
+        const latDiff = maxLat - minLat;
+        const lngDiff = maxLng - minLng;
 
-        var svgHeight = document.querySelector('svg').viewBox.baseVal.height;
-        var svgWidth = document.querySelector('svg').viewBox.baseVal.width;
+        const latLocalDiff = (y / viewBox.height) * latDiff;
+        const lngLocalDiff = (x / viewBox.width) * lngDiff;
 
-        var latLocalDiff = (y / svgHeight) * latRealDiff;
-        var lngLocalDiff = (x / svgWidth) * lngRealDiff;
-
-        return new L.LatLng(northWestLat - latLocalDiff, northWestLng + lngLocalDiff);
+        return new L.LatLng(maxLat - latLocalDiff, minLng + lngLocalDiff);
     }
 
     var map = L.map('map').setView([40.991488, 29.036736], 18);
-
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
@@ -71,22 +49,23 @@ document.addEventListener("DOMContentLoaded", function() {
     var lc = L.control.locate({
         position: 'topright',
         drawCircle: true,
-        follow: false,
-        setView: 'once',
         locateOptions: { enableHighAccuracy: true }
     }).addTo(map);
 
-    function checkLocation(lat, lng) {
-        let popup = document.getElementById("popup");
+    lc.start(); 
 
-        // Dışarıda durumunu kontrol et
+    function showPopup(message, color) {
+        let popup = document.getElementById("popup");
+        popup.innerText = message;
+        popup.style.background = color;
+        popup.classList.add("show");
+        setTimeout(() => popup.classList.remove("show"), 3000);
+    }
+
+    function checkLocation(lat, lng) {
         if (lat < minLat || lat > maxLat || lng < minLng || lng > maxLng) {
-            popup.innerText = "❌ Dışarıda";
-            popup.style.background = "lightcoral";
-            popup.classList.add("show");
-            setTimeout(() => popup.classList.remove("show"), 3000);
+            showPopup("❌ Dışarıda", "lightcoral");
         } else {
-            // İçeride değilse en yakın line'ı bul
             findClosestLine(lat, lng);
         }
     }
@@ -95,13 +74,10 @@ document.addEventListener("DOMContentLoaded", function() {
         let closestLine = null;
         let minDistance = Infinity;
 
-        // Kullanıcı konumuyla her bir line'ın mesafesini hesapla
         linesArray.forEach(line => {
-            // Başlangıç ve bitiş noktalarının mesafesini hesapla
             let startDist = map.distance([lat, lng], [line.start.lat, line.start.lng]);
             let endDist = map.distance([lat, lng], [line.end.lat, line.end.lng]);
-            
-            // En yakın olanı bul
+
             let minLineDist = Math.min(startDist, endDist);
 
             if (minLineDist < minDistance) {
@@ -111,30 +87,10 @@ document.addEventListener("DOMContentLoaded", function() {
         });
 
         if (closestLine) {
-            console.log(`En yakın Line ID: ${closestLine.id}`);
-            let popup = document.getElementById("popup");
-            popup.innerText = `En Yakın Kapı: ${closestLine.id}`;
-            popup.style.background = "lightblue";
-            popup.classList.add("show");
-            setTimeout(() => popup.classList.remove("show"), 3000);
+            showPopup(`En Yakın Kapı: ${closestLine.id}`, "lightblue");
         }
     }
 
-    map.on('locationfound', function(e) {
-        checkLocation(e.latitude, e.longitude);
-    });
-
-    map.on('locationerror', function() {
-        let popup = document.getElementById("popup");
-        popup.innerText = "Konum Alınamadı ❌";
-        popup.style.background = "lightcoral";
-        popup.classList.add("show");
-        setTimeout(() => popup.classList.remove("show"), 3000);
-    });
-
-    map.on('load', function() {
-        lc.start();
-    });
-
-    map.fire('load');
+    map.on('locationfound', e => checkLocation(e.latitude, e.longitude));
+    map.on('locationerror', () => showPopup("Konum Alınamadı ❌", "lightcoral"));
 });
